@@ -1,6 +1,8 @@
 import csv
 import re
 from collections import Counter
+import numpy as np
+import sympy
 
 weight_dict = dict()
 """
@@ -9,7 +11,7 @@ associated atomic mass as the value.
 """
 
 try:
-    with open("Ptable.csv") as pt:
+    with open("/home/timokneppers/Projects/Labtools/Ptable.csv") as pt:
         reader = csv.DictReader(pt)
         for row in reader:
             symbol = row["Symbol"]
@@ -93,7 +95,7 @@ def chemdict(formula):
     buffer = Counter()
     element_set = set(re.findall(r"[A-Z][a-z]?", formula))
 
-    if not set(element_set).issubset(weight_dict.keys()):
+    if not element_set.issubset(weight_dict.keys()):
         raise ValueError("The input contains a false element")    
 
     for n in tokens:
@@ -123,4 +125,38 @@ def chemdict(formula):
 
     return product
 
+def react_solver(reactants: list, products: list):
+    if not isinstance(reactants, (list, tuple)):
+        raise TypeError("Reactants input should be either a list or tuple")
+    if not isinstance(products, (list, tuple)):
+        raise TypeError("Products input should be either a list or a tuple")
+
+    react_dict_list = [chemdict(r) for r in reactants]
+    prod_dict_list = [chemdict(p) for p in products]
+
+    elements = {key for d in (react_dict_list + prod_dict_list) for key in d}
+    elements_dict = {el:i for i, el in enumerate(elements)}
+
+    react_vectors = []
+    prod_vectors = []
+
+    for react in react_dict_list:
+        vector = np.zeros(len(elements_dict))
+        for k, v in react.items():
+            vector[elements_dict[k]] = v
+        react_vectors.append(vector)
+    for prod in prod_dict_list:
+        vector = np.zeros(len(elements_dict))
+        for k, v in prod.items():
+            v *= -1
+            vector[elements_dict[k]] = v
+        prod_vectors.append(vector)
+    
+    matrix = np.array(react_vectors + prod_vectors, dtype="i")
+    matrix = matrix.T
+    ns_list = sympy.Matrix(matrix).nullspace()[0]
+    ns_list = ns_list * (1 / ns_list[0])
+    return ns_list
+
 print(chemdict("Cr[Fe(OH)2(NO3)2Cl2]3"))
+print(react_solver(["Fe(OH)2"], ["Fe3O4", "H2", "H2O"]))
