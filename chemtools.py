@@ -2,26 +2,35 @@ import csv
 import re
 from collections import Counter
 import numpy as np
-import sympy
+from sympy import Matrix
+from pathlib import Path
 
-weight_dict = dict()
-"""
-Converts Ptable.csv to a readable dictionary containing chemical symbols as keys, 
-associated atomic mass as the value. 
-"""
+def load_Ptable(path: Path) -> dict:
+    """
+    Converts a given .csv file into a dictionary holding chemical symbol as keys and atomic mass as values.
+    
+    Args:
+        Path: Path to .csv file
+    Return:
+        Dictionary holding chemical symbol as keys, mass as items
+    Raises:
+        FileNotFoundError: If file cannot be found at given dir
+    """
+    result = dict()
+    try:
+        with open(path) as pt:
+            reader = csv.DictReader(pt)
+            for row in reader:
+                symbol = row["Symbol"]
+                mass = float(row["AtomicMass"])
+                result[symbol] = mass
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Ptable.csv not found at {path}")
+    return result
+    
+weight_dict = load_Ptable(Path(__file__).parent / "Ptable.csv")
 
-try:
-    with open("/home/timokneppers/Projects/Labtools/Ptable.csv") as pt:
-        reader = csv.DictReader(pt)
-        for row in reader:
-            symbol = row["Symbol"]
-            mass = float(row["AtomicMass"])
-            weight_dict[symbol] = mass
-except FileNotFoundError:
-    print("File Ptable.csv not found in correct dir")
-    exit()
-
-def molarweight(formula):
+def molarweight(formula) -> float:
     """
     Calculates the molar mass of a given compound
 
@@ -68,7 +77,7 @@ def molarweight(formula):
 
     return mass
 
-def chemdict(formula):
+def chemdict(formula) -> dict:
     """
     Returns a dictionary of all elements and their amount for a given chemical compound
 
@@ -121,11 +130,21 @@ def chemdict(formula):
         raise ValueError("Brackets not properly closed")
     product = stack[-1] + buffer
     product = dict(product)
-    
 
     return product
 
-def react_solver(reactants: list, products: list):
+def react_solver(reactants: list, products: list) -> list:
+    """
+    Solves a chemical reaction given a list/tuple of inputs and outputs using sympy nullspace
+
+    Args:
+        reactants: list/tuple of chemical compounds as reactants
+        products: list/tuple of chemical compounds as products
+    Returns:
+        A list of floats used to solve the reaction in the order of the reactants and product provided
+    Raises:
+        TypeError: If inputs are not type list or tuple
+    """
     if not isinstance(reactants, (list, tuple)):
         raise TypeError("Reactants input should be either a list or tuple")
     if not isinstance(products, (list, tuple)):
@@ -154,9 +173,12 @@ def react_solver(reactants: list, products: list):
     
     matrix = np.array(react_vectors + prod_vectors, dtype="i")
     matrix = matrix.T
-    ns_list = sympy.Matrix(matrix).nullspace()[0]
+    try:
+        ns_list = Matrix(matrix).nullspace()[0]
+    except IndexError:
+        raise ValueError("Reaction is not solvable")
     ns_list = ns_list * (1 / ns_list[0])
-    return ns_list
+    return list(ns_list)
 
 print(chemdict("Cr[Fe(OH)2(NO3)2Cl2]3"))
 print(react_solver(["Fe(OH)2"], ["Fe3O4", "H2", "H2O"]))
