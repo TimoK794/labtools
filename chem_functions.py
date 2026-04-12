@@ -30,6 +30,38 @@ def load_Ptable(path: Path) -> dict:
     
 weight_dict = load_Ptable(Path(__file__).parent / "Ptable.csv")
 
+def validate_molecule(formula:str, source:dict=weight_dict) -> bool:
+    """
+    Validates if a given chemical formula contains correct chemical data and if all elements are in the given source
+
+    Args:
+        formula: Chemical formula to validate
+    Returns:
+        True if correct, False if incorrect
+    Raises:
+        TypeError: If formula not type string
+    """
+    if not isinstance(formula, str):
+        raise TypeError("Formula should be of type string")
+    input_tokens = re.findall(r"[A-Z][a-z]?|[\d]+|[()\[\]{}]", formula)
+    element_tokens = re.findall(r"[A-Z][a-z]?", formula)
+    depth = 0
+
+    if not "".join(input_tokens) == formula:
+        return False
+    if not all(el in source for el in element_tokens):
+        return False
+    for i in input_tokens:
+        if i in ["(", "[", "{"]:
+            depth +=1
+        if i in [")", "]", "}"]:
+            depth -=1
+    if not depth == 0:
+        return False
+    return True
+
+print(validate_molecule("Fe"))
+
 def molarweight(formula) -> float:
     """
     Calculates the molar mass of a given compound
@@ -180,5 +212,5 @@ def react_solver(reactants: list, products: list) -> list:
     ns_list = ns_list * (1 / ns_list[0])
     return list(ns_list)
 
-print(chemdict("Cr[Fe(OH)2(NO3)2Cl2]3"))
-print(react_solver(["Fe(OH)2"], ["Fe3O4", "H2", "H2O"]))
+#print(chemdict("Cr[Fe(OH)2(NO3)2Cl2]3"))
+#print(react_solver(["Fe(OH)2"], ["Fe3O4", "H2", "H2O"]))
