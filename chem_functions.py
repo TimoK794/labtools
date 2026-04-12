@@ -30,16 +30,19 @@ def load_Ptable(path: Path) -> dict:
     
 weight_dict = load_Ptable(Path(__file__).parent / "Ptable.csv")
 
-def validate_molecule(formula:str, source:dict=weight_dict) -> bool:
+def validate_molecule(formula:str, source:dict=weight_dict) -> None:
     """
-    Validates if a given chemical formula contains correct chemical data and if all elements are in the given source
+    Validates if a given string is a correct molecule by raising errors where neccesary
 
     Args:
         formula: Chemical formula to validate
     Returns:
-        True if correct, False if incorrect
+        None
     Raises:
         TypeError: If formula not type string
+        ValueError: If formula contains non chemical information
+        ValueError: If formula contains elements not in the database
+        ValueError: If brackets are not opened or closed properly
     """
     if not isinstance(formula, str):
         raise TypeError("Formula should be of type string")
@@ -48,43 +51,37 @@ def validate_molecule(formula:str, source:dict=weight_dict) -> bool:
     depth = 0
 
     if not "".join(input_tokens) == formula:
-        return False
+        raise ValueError("Formula contains non chemical information")
     if not all(el in source for el in element_tokens):
-        return False
+        if source == weight_dict:
+            raise ValueError("Formula contains letters which are not elements")
+        else:
+            raise ValueError("Formula contains elements not in database")
     for i in input_tokens:
         if i in ["(", "[", "{"]:
             depth +=1
         if i in [")", "]", "}"]:
             depth -=1
     if not depth == 0:
-        return False
-    return True
+        raise ValueError("Brackets not properly closed or opened")
+    return None
 
-print(validate_molecule("Fe"))
-
-def molarweight(formula) -> float:
+def molarweight(formula: str, source:dict=weight_dict) -> float:
     """
     Calculates the molar mass of a given compound
 
     Args:
         formula: Compound as a string input
+        Source: dictionary containing elements as keys and weight as values
     Return:
-        Molar mass in g/mol
+        float: Molar mass in g/mol
     Raises:
-        TypeError: If the input is not a string type
-        ValueError: If the compound is not a real chemical compound
+        All Errors in validate_molecule
     """
-
-    if not isinstance(formula, str):
-        raise TypeError("Input type should be a string")
-    
     formula = formula.strip()
-    
+    validate_molecule(formula)
+
     tokens = re.findall(r"[A-Z][a-z]?|[\d]+|[()\[\]{}]", formula)
-
-    if not "".join(tokens) == formula:
-        raise ValueError("Input contains incorrect chemical data")
-
     stack = [0]
     buffer = 0
 
@@ -121,15 +118,10 @@ def chemdict(formula) -> dict:
         TypeError: For incorrect input type
         ValueError: For incorrect chemical data,
     """
-
-    if not isinstance(formula, str):
-        raise TypeError("Compound must be a string input")
     formula = formula.strip()
+    validate_molecule(formula)
 
     tokens = re.findall(r"[A-Z][a-z]?|[\d]+|[()\[\]{}]", formula)
-    
-    if not "".join(tokens) == formula:
-        raise ValueError("Input contains incorrect chemical data")
     
     stack = list()
     stack.append(Counter())
@@ -181,6 +173,9 @@ def react_solver(reactants: list, products: list) -> list:
         raise TypeError("Reactants input should be either a list or tuple")
     if not isinstance(products, (list, tuple)):
         raise TypeError("Products input should be either a list or a tuple")
+    
+    map(validate_molecule, reactants)
+    map(validate_molecule, products)
 
     react_dict_list = [chemdict(r) for r in reactants]
     prod_dict_list = [chemdict(p) for p in products]
@@ -211,6 +206,3 @@ def react_solver(reactants: list, products: list) -> list:
         raise ValueError("Reaction is not solvable")
     ns_list = ns_list * (1 / ns_list[0])
     return list(ns_list)
-
-#print(chemdict("Cr[Fe(OH)2(NO3)2Cl2]3"))
-#print(react_solver(["Fe(OH)2"], ["Fe3O4", "H2", "H2O"]))
