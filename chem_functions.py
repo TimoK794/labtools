@@ -87,9 +87,9 @@ def molarweight(formula: str, source:dict=weight_dict) -> float:
 
     for token in tokens:
         match token:
-            case e if e in weight_dict.keys():
+            case e if e in source.keys():
                 stack[-1] += buffer
-                buffer = weight_dict[e]
+                buffer = source[e]
             case t if t.isnumeric():
                 buffer *= int(t)
             case "(" | "[" | "{":
@@ -106,7 +106,7 @@ def molarweight(formula: str, source:dict=weight_dict) -> float:
 
     return mass
 
-def chemdict(formula) -> dict:
+def chemdict(formula:str) -> dict:
     """
     Returns a dictionary of all elements and their amount for a given chemical compound
 
@@ -127,9 +127,6 @@ def chemdict(formula) -> dict:
     stack.append(Counter())
     buffer = Counter()
     element_set = set(re.findall(r"[A-Z][a-z]?", formula))
-
-    if not element_set.issubset(weight_dict.keys()):
-        raise ValueError("The input contains a false element")    
 
     for n in tokens:
         match n:
@@ -168,6 +165,7 @@ def react_solver(reactants: list, products: list) -> list:
         A list of floats used to solve the reaction in the order of the reactants and product provided
     Raises:
         TypeError: If inputs are not type list or tuple
+        ValueError: If reaction is not solvable
     """
     if not isinstance(reactants, (list, tuple)):
         raise TypeError("Reactants input should be either a list or tuple")
